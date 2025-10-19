@@ -13,7 +13,9 @@ public class RecipeController {
     private final List<Recipe> recipes = new ArrayList<>();
 
     private final AtomicLong counter = new AtomicLong();
-    RecipeController() {}
+
+    RecipeController() {
+    }
 
     /**
      * Adds a new recipe to the list.
@@ -70,27 +72,56 @@ public class RecipeController {
         }
         return false;
     }
+
     /**
      * Updates an existing recipe by its ID.
      *
-     * @param id the ID of the recipe to update
+     * @param id            the ID of the recipe to update
      * @param updatedRecipe the updated recipe data
      * @return the updated recipe, or null if not found
      */
     @PutMapping("/{id}")
     public Recipe updateRecipe(@PathVariable long id, @RequestBody Recipe updatedRecipe) {
-        throw new UnsupportedOperationException("Update recipe not implemented");
+        for (int i = 0; i < recipes.size(); i++) {
+            if (recipes.get(i).getId() == id) {
+                updatedRecipe.setId(id);
+                recipes.set(i, updatedRecipe); // replace full recipe
+                return updatedRecipe;
+            }
+        }
+        return null; // not found
     }
 
     /**
      * Partially updates an existing recipe by its ID.
      *
-     * @param id the ID of the recipe to update
+     * @param id            the ID of the recipe to update
      * @param partialRecipe the partial recipe data to update
      * @return the updated recipe, or null if not found
      */
     @PatchMapping("/{id}")
     public Recipe patchRecipe(@PathVariable long id, @RequestBody Recipe partialRecipe) {
-        throw new UnsupportedOperationException("Update recipe not implemented");
+        for (Recipe recipe : recipes) {
+            if (recipe.getId() == id) {
+
+                if (partialRecipe.getTitle() != null) {
+                    recipe.setTitle(partialRecipe.getTitle());
+                }
+                if (partialRecipe.getDescription() != null) {
+                    recipe.setDescription(partialRecipe.getDescription());
+                }
+                if (partialRecipe.getIngredients() != null) {
+                    recipe.setIngredients(partialRecipe.getIngredients());
+                }
+                // If your Recipe has instructions, patch that too:
+                if (partialRecipe.getInstructions() != null) {
+                    recipe.setInstructions(partialRecipe.getInstructions());
+                }
+
+                recipe.setId(id); // keep same ID
+                return recipe;
+            }
+        }
+        return null; // not found
     }
 }

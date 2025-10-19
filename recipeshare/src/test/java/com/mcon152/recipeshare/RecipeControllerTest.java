@@ -18,10 +18,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(RecipeController.class)
 class RecipeControllerTest {
@@ -39,7 +37,7 @@ class RecipeControllerTest {
     @Nested
     class CreationTests {
         @Test
-        void testAddRecipe() throws Exception {
+        void shouldAddNewRecipeSuccessfully() throws Exception {
 
             ObjectNode json = mapper.createObjectNode();
             json.put("title", "Cake");
@@ -65,9 +63,23 @@ class RecipeControllerTest {
                 "'Pasta Salad','Fresh pasta salad','200g pasta;100g tomatoes;50g olives','Mix all ingredients'",
                 "'Pancakes','Fluffy pancakes','1 cup flour;2 eggs;1 cup milk','Cook on skillet until golden'"
         })
-        void parameterizedAddRecipeTest(String title, String description, String ingredients, String instructions) throws Exception {
-            throw new UnsupportedOperationException("parameterizedAddRecipeTest");
-        }
+        void shouldAddMultipleRecipesWithDifferentInputs(String title, String description, String ingredients, String instructions) throws Exception {
+            ObjectNode json = mapper.createObjectNode();
+            json.put("title", title);
+            json.put("description", description);
+            json.put("ingredients", ingredients);
+            json.put("instructions", instructions);
+
+            mockMvc.perform(post("/api/recipes")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(mapper.writeValueAsString(json)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.title").value(title))
+                    .andExpect(jsonPath("$.description").value(description))
+                    .andExpect(jsonPath("$.ingredients").value(ingredients))
+                    .andExpect(jsonPath("$.instructions").value(instructions))
+                    .andExpect(jsonPath("$.id").isNumber());
+         }
     }
 
     // Internal class for delete and get tests
@@ -94,7 +106,7 @@ class RecipeControllerTest {
         }
 
         @Test
-        void testGetAllRecipes() throws Exception {
+        void shouldReturnAllRecipesWhenGetAllIsCalled() throws Exception {
             mockMvc.perform(get("/api/recipes"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$[0].title").value("Pie"))
@@ -102,26 +114,73 @@ class RecipeControllerTest {
         }
 
         @Test
-        void testGetRecipe() throws Exception {
-            int id = recipeIds.get(0);
+        void shouldReturnSingleRecipeById() throws Exception {
+            int id = recipeIds.getFirst();
             mockMvc.perform(get("/api/recipes/" + id))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.title").value("Pie"));
         }
 
         @Test
-        void testDeleteRecipe() {
-            throw new UnsupportedOperationException("testDeleteRecipe not implemented");
+        void shouldDeleteRecipeAndReturnTrueThenEmptyBodyOnGet() throws Exception {
+
+            // use an existing id created in @BeforeEach
+            int id = recipeIds.getFirst();
+
+            // DELETE should succeed and return true
+            mockMvc.perform(delete("/api/recipes/" + id))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string("true"));
+
+            // verify - GET on the same id should return empty body
+            mockMvc.perform(get("/api/recipes/" + id))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(""));
+
         }
 
         @Test
-        void testPutRecipe() {
-            throw new UnsupportedOperationException("testPutRecipe not implemented");
+        void shouldUpdateRecipeCompletelyWithPutRequest() throws Exception {
+
+            // use an existing id created in @BeforeEach
+            int id = recipeIds.getFirst();
+
+            ObjectNode json = mapper.createObjectNode();
+            json.put("title", "Updated Pie");
+            json.put("description", "Apple pie with cinnamon");
+            json.put("ingredients", "Apples, Flour, Sugar, Cinnamon");
+            json.put("instructions", "Mix well and bake 45 minutes");
+
+            mockMvc.perform(put("/api/recipes/" + id)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(mapper.writeValueAsString(json)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.title").value("Updated Pie"))
+                    .andExpect(jsonPath("$.description").value("Apple pie with cinnamon"))
+                    .andExpect(jsonPath("$.ingredients").value("Apples, Flour, Sugar, Cinnamon"))
+                    .andExpect(jsonPath("$.instructions").value("Mix well and bake 45 minutes"))
+                    .andExpect(jsonPath("$.id").value(id));
         }
 
         @Test
-        void testPatchRecipe() {
-            throw new UnsupportedOperationException("testPatchRecipe not implemented");
+        void shouldUpdateRecipePartiallyWithPatchRequest() throws Exception {
+
+            // patch the first recipe created in @BeforeEach
+            int id = recipeIds.getFirst();
+
+            ObjectNode patch = mapper.createObjectNode();
+            patch.put("title", "Grandma's Pie"); // only change title
+
+            mockMvc.perform(patch("/api/recipes/" + id)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(mapper.writeValueAsString(patch)))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.title").value("Grandma's Pie"))
+                    // unchanged fields from the seed data
+                    .andExpect(jsonPath("$.description").value("Apple pie"))
+                    .andExpect(jsonPath("$.ingredients").value("Apples, Flour, Sugar"))
+                    .andExpect(jsonPath("$.instructions").value("Mix and bake"))
+                    .andExpect(jsonPath("$.id").value(id));
         }
     }
 
@@ -129,34 +188,40 @@ class RecipeControllerTest {
     class NonExistingRecipeTests {
 
         @Test
-        void testGetNonExistingRecipe() throws Exception {
-            // Skeleton: Try to get a recipe with a non-existing ID
-            // Example: mockMvc.perform(get("/api/recipes/9999"))...
-            throw new UnsupportedOperationException("testGetNonExistingRecipe not implemented");
+        void shouldReturnEmptyBodyWhenGettingNonExistingRecipe() throws Exception {
+            // Try to get a recipe that doesn't exist
+            mockMvc.perform(get("/api/recipes/999999"))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(""));
         }
 
         @Test
-        void testPutNonExistingRecipe() throws Exception {
-            // Skeleton: Try to update a recipe with a non-existing ID
-            // Example: mockMvc.perform(put("/api/recipes/9999"))...
-            throw new UnsupportedOperationException("testPutNonExistingRecipe not implemented");
+        void shouldReturnEmptyBodyWhenUpdatingNonExistingRecipe() throws Exception {
+            // Try to update a recipe that doesn't exist
+            var body = mapper.createObjectNode();
+            body.put("title", "N/A");
+            body.put("description", "N/A");
+            body.put("ingredients", "N/A");
+            body.put("instructions", "N/A");
+
+            mockMvc.perform(put("/api/recipes/999999")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(mapper.writeValueAsString(body)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(""));
         }
 
         @Test
-        void testPatchNonExistingRecipe() throws Exception {
-            // Skeleton: Try to patch a recipe with a non-existing ID
-            // Example: mockMvc.perform(patch("/api/recipes/9999"))...
-            throw new UnsupportedOperationException("testPatchNonExistingRecipe not implemented");
-        }
+        void shouldReturnEmptyBodyWhenPatchingNonExistingRecipe() throws Exception {
+            // Try to partially update a recipe that doesn't exist
+            var patch = mapper.createObjectNode();
+            patch.put("title", "Yummy Cake");
 
-        @Test
-        void testDeleteNonExistingRecipe() throws Exception {
-            // Skeleton: Try to delete a recipe with a non-existing ID
-            // Example: mockMvc.perform(delete("/api/recipes/9999"))...
-            throw new UnsupportedOperationException("testDeleteNonExistingRecipe not implemented");
+            mockMvc.perform(patch("/api/recipes/999999")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(mapper.writeValueAsString(patch)))
+                    .andExpect(status().isOk())
+                    .andExpect(content().string(""));
         }
     }
-
-
-
 }
