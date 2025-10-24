@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class RecipeTest {
 
+    // Test intent: Recipe model behavior only (getters/setters, derived fields).
+    // (LSP) If a subclass is added later, it should pass any tests that assume a Recipe.
     @Test
     void testCreateRecipe() {
         Recipe recipe = new Recipe(1L, "Cake", "Delicious cake", "Flour, Sugar, Eggs", "Mix and bake");

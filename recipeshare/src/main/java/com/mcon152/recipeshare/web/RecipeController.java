@@ -1,3 +1,9 @@
+// MVC: CONTROLLER
+// This class is part of the Controller layer.
+// It handles HTTP requests (like GET and POST) and sends responses back.
+// It does NOT store data itself or show visuals — it just connects everything together.
+// In a REST app, the "view" is usually the JSON response sent to the browser.
+
 package com.mcon152.recipeshare.web;
 
 import com.mcon152.recipeshare.Recipe;
@@ -7,6 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
+// SOLID: Single Responsibility — This class only handles HTTP requests.
+// It sends work to RecipeService instead of doing business or database logic itself.
 @RestController
 @RequestMapping("/api/recipes")
 public class RecipeController {

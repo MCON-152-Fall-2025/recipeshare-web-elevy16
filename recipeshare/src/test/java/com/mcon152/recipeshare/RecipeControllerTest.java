@@ -21,6 +21,8 @@ import java.util.List;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
+// Test intent: Controller returns correct HTTP responses and delegates work.
+// (SRP) Don’t test DB/business rules here — those belong in a service test if added.
 @WebMvcTest(RecipeController.class)
 class RecipeControllerTest {
 
